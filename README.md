@@ -1,36 +1,114 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Perspectra - AI-Powered Boardroom for One
 
-## Getting Started
+Welcome to Perspectra, your personal AI advisory panel for better decision-making! This is the Phase 1 MVP featuring four distinct AI personas powered by Perplexity AI.
 
-First, run the development server:
+## 🎯 What is Perspectra?
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+Perspectra creates a virtual "boardroom for one" where you can discuss decisions and problems with AI personas representing different cognitive styles:
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- **⚡ System-1 Thinker**: Fast, intuitive, emotional responses
+- **🧠 System-2 Thinker**: Slow, deliberate, analytical thinking
+- **⚖️ Moderator**: Neutral facilitator and synthesizer
+- **👹 Devil's Advocate**: Challenges assumptions and identifies risks
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🚀 Getting Started
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Prerequisites
 
-## Learn More
+- Node.js 18+
+- npm or yarn
+- Perplexity AI API key
 
-To learn more about Next.js, take a look at the following resources:
+### Setup
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. **Clone and install dependencies:**
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+   ```bash
+   cd perspectra-app
+   npm install
+   ```
 
-## Deploy on Vercel
+2. **Set up environment variables:**
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+   ```bash
+   cp env.example .env.local
+   ```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+   Edit `.env.local` and add your Perplexity API key:
+
+   ```
+   PERPLEXITY_API_KEY=your_actual_api_key_here
+   ```
+
+3. **Get your Perplexity API key:**
+
+   - Visit [Perplexity AI Settings](https://www.perplexity.ai/settings/api)
+   - Create an account if needed
+   - Generate an API key
+   - Add it to your `.env.local` file
+
+4. **Run the development server:**
+
+   ```bash
+   npm run dev
+   ```
+
+5. **Open your browser:**
+   Navigate to [http://localhost:3000](http://localhost:3000)
+
+## 🎮 How to Use
+
+1. **Describe your problem**: Enter any decision or problem you're facing
+2. **Select personas**: Choose which AI advisors you want in your boardroom
+3. **Start discussion**: Click "Start Boardroom Discussion"
+4. **Engage**: Ask questions, share thoughts, and get diverse perspectives
+5. **Make decisions**: Use the insights to make better-informed choices
+
+## 🛠 Tech Stack
+
+- **Frontend**: Next.js 14 with TypeScript
+- **Styling**: Tailwind CSS v4
+- **State Management**: Zustand
+- **AI**: Perplexity AI API
+- **UI Components**: Custom components with Tailwind
+
+## 📋 Features (Phase 1 MVP)
+
+✅ **Core Features:**
+
+- Multi-persona AI conversations
+- Real-time chat interface
+- Persona selection and management
+- Problem context setting
+- Conversation persistence during session
+
+✅ **AI Personas:**
+
+- System-1 vs System-2 thinking (Kahneman)
+- Neutral moderation
+- Constructive criticism and risk assessment
+
+✅ **User Experience:**
+
+- Clean, responsive design
+- Real-time message updates
+- Loading states and error handling
+- Conversation management (start/end/clear)
+
+## 🔮 Coming Soon (Future Phases)
+
+- **Phase 2**: Voice integration, mobile app, personality type integration
+- **Phase 3**: Advanced bias detection, Six Thinking Hats, sentiment analysis
+- **Phase 4**: CBT integration, Internal Family Systems, advanced analytics
+
+## 🤝 Contributing
+
+This is currently a personal project, but feedback and suggestions are welcome!
+
+## 📄 License
+
+MIT License - feel free to use this for your own projects.
+
+---
+
+**Built with ❤️ using Perplexity AI**

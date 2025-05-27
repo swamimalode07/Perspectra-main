@@ -133,10 +133,11 @@ export class AutoConversationEngine {
     try {
       const response = await this.getPersonaResponse(nextSpeaker);
       
-      if (this.onMessageCallback && response) {
+      if (this.onMessageCallback && response.content) {
         this.onMessageCallback({
-          content: response,
+          content: response.content,
           persona: nextSpeaker,
+          factChecked: response.factChecked || false,
         });
       }
 
@@ -180,7 +181,7 @@ export class AutoConversationEngine {
     return this.personas[this.state.conversationRound % this.personas.length];
   }
 
-  private async getPersonaResponse(persona: PersonaType): Promise<string> {
+  private async getPersonaResponse(persona: PersonaType): Promise<{content: string, factChecked: boolean}> {
     const conversationContext = this.buildConversationContext();
     const personaPrompt = this.getEnhancedPersonaPrompt(persona);
 
@@ -198,10 +199,16 @@ export class AutoConversationEngine {
       });
 
       const data = await response.json();
-      return data.response || `${persona} is thinking...`;
+      return {
+        content: data.response || 'No response generated',
+        factChecked: data.factChecked || false
+      };
     } catch (error) {
-      console.error(`Error getting response from ${persona}:`, error);
-      return `${persona} encountered an error while responding.`;
+      console.error('Error getting persona response:', error);
+      return {
+        content: 'Error generating response',
+        factChecked: false
+      };
     }
   }
 

@@ -5,6 +5,7 @@ interface Message {
   content: string;
   persona: string;
   timestamp: Date;
+  factChecked?: boolean;
 }
 
 interface MessageBubbleProps {
@@ -82,6 +83,18 @@ export function MessageBubble({ message }: MessageBubbleProps) {
             <p className="text-white/90 leading-relaxed whitespace-pre-wrap">
               {message.content}
             </p>
+            
+            {/* Fact-checking indicator */}
+            {message.factChecked && (
+              <div className="mt-3 pt-3 border-t border-white/10">
+                <div className="flex items-center gap-2 text-xs text-green-300">
+                  <span className="w-4 h-4 bg-green-500/20 rounded-full flex items-center justify-center">
+                    ✓
+                  </span>
+                  <span>Fact-checked with current data</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -90,6 +103,15 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           <span className="text-xs text-slate-400">{personaInfo?.name}</span>
           <span className="text-xs text-slate-500">•</span>
           <span className="text-xs text-slate-400">{formatTime(message.timestamp)}</span>
+          {message.factChecked && (
+            <>
+              <span className="text-xs text-slate-500">•</span>
+              <span className="text-xs text-green-400 flex items-center gap-1">
+                <span className="w-2 h-2 bg-green-400 rounded-full"></span>
+                Verified
+              </span>
+            </>
+          )}
         </div>
       </div>
     </div>

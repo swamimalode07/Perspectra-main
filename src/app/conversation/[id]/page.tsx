@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { useConversationStore } from '@/store/conversation';
 import { PersonaCard } from '@/components/PersonaCard';
 import { MessageBubble } from '@/components/MessageBubble';
@@ -11,22 +11,37 @@ import { ConversationControls } from '@/components/ConversationControls';
 import { Button } from '@/components/ui/Button';
 import { PERSONA_INFO, PersonaType } from '@/lib/perplexity';
 import { AutoConversationEngine, ConversationState } from '@/lib/autoConversation';
-import { ExampleProblems } from '@/components/ExampleProblems';
-import { DecisionSummary } from '@/components/DecisionSummary';
-import { QuickDemo } from '@/components/QuickDemo';
-import { DecisionProgress } from '@/components/DecisionProgress';
 
-export default function Home() {
+interface DatabaseMessage {
+  id: string;
+  content: string;
+  persona: string;
+  timestamp: string;
+  factChecked: boolean;
+}
+
+interface DatabaseConversation {
+  id: string;
+  title: string;
+  problem: string;
+  status: string;
+  activePersonas: string;
+  messages: DatabaseMessage[];
+}
+
+export default function ConversationPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const params = useParams();
+  const conversationId = params.id as string;
+  
   const { messages, problem, setProblem, addMessage, isLoading, setIsLoading, clearConversation } = useConversationStore();
   const [selectedPersona, setSelectedPersona] = useState<PersonaType | null>(null);
   const [userInput, setUserInput] = useState('');
-  const [showProblemInput, setShowProblemInput] = useState(!(problem?.trim()));
   const [showInterruptInput, setShowInterruptInput] = useState(false);
   const [interruptMessage, setInterruptMessage] = useState('');
-  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingConversation, setIsLoadingConversation] = useState(true);
+  const [conversationNotFound, setConversationNotFound] = useState(false);
   
   // Auto-conversation state
   const [autoConversationEngine] = useState(() => new AutoConversationEngine());
@@ -51,6 +66,55 @@ export default function Home() {
     }
   }, [status, router]);
 
+  // Load conversation from database
+  useEffect(() => {
+    if (status === 'authenticated' && conversationId) {
+      loadConversation();
+    }
+  }, [status, conversationId]);
+
+  const loadConversation = async () => {
+    try {
+      setIsLoadingConversation(true);
+      
+      // Fetch conversation details
+      const conversationResponse = await fetch(`/api/conversations/${conversationId}`);
+      if (!conversationResponse.ok) {
+        setConversationNotFound(true);
+        return;
+      }
+      
+      const conversationData = await conversationResponse.json();
+      const conversation: DatabaseConversation = conversationData.conversation;
+      
+      // Fetch messages
+      const messagesResponse = await fetch(`/api/conversations/${conversationId}/messages`);
+      if (messagesResponse.ok) {
+        const messagesData = await messagesResponse.json();
+        
+        // Clear existing conversation and load from database
+        clearConversation();
+        setProblem(conversation.problem);
+        
+        // Convert database messages to store format
+        messagesData.messages.forEach((dbMessage: DatabaseMessage) => {
+          addMessage({
+            id: dbMessage.id,
+            content: dbMessage.content,
+            persona: dbMessage.persona as PersonaType | 'user',
+            timestamp: new Date(dbMessage.timestamp),
+            factChecked: dbMessage.factChecked,
+          });
+        });
+      }
+    } catch (error) {
+      console.error('Error loading conversation:', error);
+      setConversationNotFound(true);
+    } finally {
+      setIsLoadingConversation(false);
+    }
+  };
+
   // Initialize auto-conversation engine
   useEffect(() => {
     autoConversationEngine.setMessageCallback((message) => {
@@ -64,21 +128,18 @@ export default function Home() {
       addMessage(fullMessage);
       autoConversationEngine.addMessage(fullMessage);
       
-      // Save message to database if conversation exists
-      if (currentConversationId) {
-        saveMessageToDatabase(fullMessage);
-      }
+      // Save message to database
+      saveMessageToDatabase(fullMessage);
     });
 
     autoConversationEngine.setStateChangeCallback((state) => {
       setConversationState(state);
     });
-  }, [autoConversationEngine, addMessage, currentConversationId]);
+  }, [autoConversationEngine, addMessage]);
 
-  // Auto-scroll to bottom of chat container only (not entire page)
+  // Auto-scroll to bottom of chat container
   useEffect(() => {
     if (messagesEndRef.current && chatContainerRef.current) {
-      // Only scroll if the chat container is visible
       if (viewMode === 'split' || viewMode === 'chat') {
         messagesEndRef.current.scrollIntoView({ 
           behavior: 'smooth',
@@ -90,10 +151,8 @@ export default function Home() {
 
   // Save message to database
   const saveMessageToDatabase = async (message: any) => {
-    if (!currentConversationId) return;
-    
     try {
-      await fetch(`/api/conversations/${currentConversationId}/messages`, {
+      await fetch(`/api/conversations/${conversationId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -104,48 +163,6 @@ export default function Home() {
       });
     } catch (error) {
       console.error('Error saving message:', error);
-    }
-  };
-
-  // Create new conversation in database
-  const createConversation = async (title: string, problemText: string) => {
-    if (!session?.user?.id) return null;
-    
-    setIsSaving(true);
-    try {
-      const response = await fetch('/api/conversations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title,
-          problem: problemText,
-          activePersonas: ['system1', 'system2', 'moderator', 'devilsAdvocate'],
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        return data.conversation.id;
-      }
-    } catch (error) {
-      console.error('Error creating conversation:', error);
-    } finally {
-      setIsSaving(false);
-    }
-    return null;
-  };
-
-  const handleStartConversation = async () => {
-    if (problem?.trim()) {
-      // Create conversation in database
-      const title = problem.slice(0, 50) + (problem.length > 50 ? '...' : '');
-      const conversationId = await createConversation(title, problem);
-      
-      if (conversationId) {
-        setCurrentConversationId(conversationId);
-      }
-      
-      setShowProblemInput(false);
     }
   };
 
@@ -160,13 +177,8 @@ export default function Home() {
     };
 
     addMessage(userMessage);
+    await saveMessageToDatabase(userMessage);
     
-    // Save to database
-    if (currentConversationId) {
-      await saveMessageToDatabase(userMessage);
-    }
-    
-    // If auto-conversation is active, interrupt it
     if (conversationState.isActive) {
       autoConversationEngine.interruptWithUserMessage(userMessage);
     }
@@ -203,11 +215,7 @@ export default function Home() {
         };
         
         addMessage(aiMessage);
-        
-        // Save to database
-        if (currentConversationId) {
-          await saveMessageToDatabase(aiMessage);
-        }
+        await saveMessageToDatabase(aiMessage);
       }
     } catch (error) {
       console.error('Error getting persona response:', error);
@@ -251,12 +259,7 @@ export default function Home() {
       };
       
       addMessage(userMessage);
-      
-      // Save to database
-      if (currentConversationId) {
-        await saveMessageToDatabase(userMessage);
-      }
-      
+      await saveMessageToDatabase(userMessage);
       autoConversationEngine.interruptWithUserMessage(userMessage);
       
       setInterruptMessage('');
@@ -265,168 +268,44 @@ export default function Home() {
   };
 
   const handleSpeedChange = (speed: number) => {
-    // Update auto-conversation speed
     autoConversationEngine.setSpeakingInterval(speed);
   };
 
   const handleNodeClick = (nodeId: string) => {
-    // Find and highlight the message
     const message = messages.find(m => m.id === nodeId);
     if (message) {
-      // Could implement message highlighting or navigation
       console.log('Clicked node:', message);
     }
-  };
-
-  const handleNewConversation = () => {
-    clearConversation();
-    setCurrentConversationId(null);
-    setShowProblemInput(true);
   };
 
   const goToDashboard = () => {
     router.push('/dashboard');
   };
 
+  const handleNewConversation = () => {
+    router.push('/');
+  };
+
   // Loading state
-  if (status === 'loading') {
+  if (status === 'loading' || isLoadingConversation) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
-        <div className="text-white text-xl">Loading...</div>
+        <div className="text-white text-xl">Loading conversation...</div>
       </div>
     );
   }
 
-  if (showProblemInput) {
+  // Conversation not found
+  if (conversationNotFound) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-        {/* Header with navigation */}
-        <div className="bg-black/20 backdrop-blur-sm border-b border-white/10">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center py-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                  <span className="text-lg font-bold text-white">P</span>
-                </div>
-                <h1 className="text-xl font-bold text-white">Perspectra</h1>
-              </div>
-              <div className="flex items-center gap-4">
-                <Button
-                  onClick={goToDashboard}
-                  variant="outline"
-                  className="border-white/20 text-white hover:bg-white/10"
-                >
-                  Dashboard
-                </Button>
-                <div className="text-sm text-slate-300">
-                  {session?.user?.name || session?.user?.email}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="container mx-auto px-4 py-16">
-          {/* Header */}
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl mb-6">
-              <span className="text-3xl font-bold text-white">P</span>
-            </div>
-            <h1 className="text-5xl font-bold text-white mb-4 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-              Perspectra
-            </h1>
-            <p className="text-xl text-slate-300 max-w-2xl mx-auto leading-relaxed mb-8">
-              Stop overthinking. Get <span className="text-blue-400 font-semibold">expert AI analysis</span> of your toughest decisions 
-              in minutes, not hours. Multiple perspectives, actionable insights, clear recommendations.
-            </p>
-            
-            {/* Value Props */}
-            <div className="flex justify-center gap-8 text-center mb-8">
-              <div className="bg-white/5 rounded-lg p-4 border border-white/10">
-                <div className="text-2xl font-bold text-blue-400">4</div>
-                <div className="text-sm text-slate-400">Expert AI Advisors</div>
-              </div>
-              <div className="bg-white/5 rounded-lg p-4 border border-white/10">
-                <div className="text-2xl font-bold text-purple-400">5-15</div>
-                <div className="text-sm text-slate-400">Minutes to Clarity</div>
-              </div>
-              <div className="bg-white/5 rounded-lg p-4 border border-white/10">
-                <div className="text-2xl font-bold text-green-400">100%</div>
-                <div className="text-sm text-slate-400">Actionable Results</div>
-              </div>
-            </div>
-
-            {/* Social Proof / Use Cases */}
-            <div className="text-center mb-12">
-              <p className="text-slate-400 text-sm mb-4">Perfect for:</p>
-              <div className="flex flex-wrap justify-center gap-3">
-                <span className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-sm">Career Changes</span>
-                <span className="px-3 py-1 bg-purple-500/20 text-purple-300 rounded-full text-sm">Business Decisions</span>
-                <span className="px-3 py-1 bg-green-500/20 text-green-300 rounded-full text-sm">Investment Choices</span>
-                <span className="px-3 py-1 bg-yellow-500/20 text-yellow-300 rounded-full text-sm">Life Changes</span>
-                <span className="px-3 py-1 bg-pink-500/20 text-pink-300 rounded-full text-sm">Major Purchases</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Problem Input Card */}
-          <div className="max-w-2xl mx-auto mb-12">
-            <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 border border-white/20 shadow-2xl">
-              <h2 className="text-2xl font-semibold text-white mb-6 text-center">
-                What decision or problem would you like to explore?
-              </h2>
-              
-              <div className="space-y-6">
-                <textarea
-                  value={problem || ''}
-                  onChange={(e) => setProblem(e.target.value)}
-                  placeholder="Describe your situation, decision, or challenge. Be specific about your constraints, goals, and what you're trying to decide between..."
-                  className="w-full h-32 px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-400 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                
-                <Button
-                  onClick={handleStartConversation}
-                  disabled={!problem?.trim() || isSaving}
-                  className="w-full py-4 text-lg font-semibold bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-                >
-                  {isSaving ? 'Creating Conversation...' : 'Enter the AI Boardroom'}
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          {/* Example Problems */}
-          <ExampleProblems onSelectExample={(exampleProblem) => {
-            setProblem(exampleProblem);
-          }} />
-
-          {/* Quick Demo */}
-          <div className="max-w-2xl mx-auto mt-12">
-            <QuickDemo onStartDemo={(demoMessages, demoProblem) => {
-              // Load demo conversation
-              clearConversation();
-              setProblem(demoProblem);
-              
-              // Add demo messages to store
-              demoMessages.forEach(message => {
-                addMessage(message);
-              });
-              
-              // Exit problem input mode
-              setShowProblemInput(false);
-            }} />
-          </div>
-
-          {/* Features Preview */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-16">
-            {Object.entries(PERSONA_INFO).map(([key, info]) => (
-              <div key={key} className="text-center p-4 bg-white/5 rounded-xl border border-white/10">
-                <div className="text-2xl mb-2">{info.icon}</div>
-                <div className="text-sm font-medium text-white">{info.name}</div>
-                <div className="text-xs text-slate-400 mt-1">{info.description}</div>
-              </div>
-            ))}
-          </div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-6xl mb-4">😕</div>
+          <h1 className="text-2xl font-bold text-white mb-4">Conversation Not Found</h1>
+          <p className="text-slate-300 mb-6">This conversation doesn't exist or you don't have access to it.</p>
+          <Button onClick={goToDashboard} className="bg-gradient-to-r from-blue-500 to-purple-600">
+            Back to Dashboard
+          </Button>
         </div>
       </div>
     );
@@ -453,12 +332,6 @@ export default function Home() {
             <div className="bg-white/5 rounded-lg p-3 border border-white/10">
               <h3 className="text-sm font-medium text-slate-300 mb-2">Current Discussion</h3>
               <p className="text-sm text-white line-clamp-3">{problem || 'No topic set'}</p>
-              <button 
-                onClick={() => setShowProblemInput(true)}
-                className="text-xs text-blue-400 hover:text-blue-300 mt-2 transition-colors"
-              >
-                Change topic
-              </button>
             </div>
           </div>
 
@@ -495,11 +368,6 @@ export default function Home() {
 
           {/* Stats */}
           <div className="p-6 border-t border-white/10">
-            {/* Progress Indicator */}
-            <div className="mb-6">
-              <DecisionProgress messages={messages} problem={problem || ''} />
-            </div>
-
             <div className="grid grid-cols-2 gap-4 text-center">
               <div className="bg-white/5 rounded-lg p-3">
                 <div className="text-lg font-bold text-white">{messages.length}</div>
@@ -570,12 +438,10 @@ export default function Home() {
                 </Button>
                 
                 {/* Save Status */}
-                {currentConversationId && (
-                  <div className="text-xs text-green-400 flex items-center gap-1">
-                    <span className="w-2 h-2 bg-green-400 rounded-full"></span>
-                    Saved
-                  </div>
-                )}
+                <div className="text-xs text-green-400 flex items-center gap-1">
+                  <span className="w-2 h-2 bg-green-400 rounded-full"></span>
+                  Saved
+                </div>
               </div>
             </div>
           </div>
@@ -585,7 +451,7 @@ export default function Home() {
             {/* Chat Section */}
             {(viewMode === 'split' || viewMode === 'chat') && (
               <div className={`${viewMode === 'split' ? 'w-1/2' : 'w-full'} flex flex-col border-r border-white/10 overflow-hidden`}>
-                {/* Messages Container - Fixed height with internal scrolling */}
+                {/* Messages Container */}
                 <div 
                   ref={chatContainerRef}
                   className="flex-1 overflow-y-auto p-6 space-y-4"
@@ -594,7 +460,7 @@ export default function Home() {
                   {messages.length === 0 ? (
                     <div className="text-center py-16">
                       <div className="text-6xl mb-4">🤔</div>
-                      <h3 className="text-xl font-semibold text-white mb-2">Ready to start the discussion</h3>
+                      <h3 className="text-xl font-semibold text-white mb-2">Continue the discussion</h3>
                       <p className="text-slate-400 mb-6">
                         Start an auto-conversation or click on any AI advisor to get their perspective.
                       </p>
@@ -609,7 +475,7 @@ export default function Home() {
                   )}
                 </div>
 
-                {/* Input Area - Fixed at bottom */}
+                {/* Input Area */}
                 <div className="bg-black/20 backdrop-blur-lg border-t border-white/10 p-4 flex-shrink-0">
                   {showInterruptInput ? (
                     <div className="space-y-3">
@@ -672,47 +538,11 @@ export default function Home() {
             {/* Canvas Section */}
             {(viewMode === 'split' || viewMode === 'canvas') && (
               <div className={`${viewMode === 'split' ? 'w-1/2' : 'w-full'} p-6 overflow-hidden`}>
-                <div className="h-full flex flex-col">
-                  {/* Canvas Header */}
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-white">Decision Analysis</h3>
-                    <div className="text-xs text-slate-400">
-                      {messages.length} insights analyzed
-                    </div>
-                  </div>
-                  
-                  {/* Canvas Content */}
-                  <div className="flex-1 overflow-hidden">
-                    {messages.length >= 3 ? (
-                      <div className="h-full overflow-y-auto space-y-6">
-                        {/* Conversation Canvas */}
-                        <div className="h-64">
-                          <ConversationCanvas
-                            messages={messages}
-                            isAutoConversing={conversationState.isActive && !conversationState.pauseRequested}
-                            onNodeClick={handleNodeClick}
-                          />
-                        </div>
-                        
-                        {/* Decision Summary */}
-                        <DecisionSummary
-                          messages={messages}
-                          problem={problem || ''}
-                          onExport={() => {
-                            // TODO: Implement export functionality
-                            console.log('Export summary');
-                          }}
-                        />
-                      </div>
-                    ) : (
-                      <ConversationCanvas
-                        messages={messages}
-                        isAutoConversing={conversationState.isActive && !conversationState.pauseRequested}
-                        onNodeClick={handleNodeClick}
-                      />
-                    )}
-                  </div>
-                </div>
+                <ConversationCanvas
+                  messages={messages}
+                  isAutoConversing={conversationState.isActive && !conversationState.pauseRequested}
+                  onNodeClick={handleNodeClick}
+                />
               </div>
             )}
           </div>
@@ -720,4 +550,4 @@ export default function Home() {
       </div>
     </div>
   );
-}
+} 

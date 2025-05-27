@@ -7,6 +7,7 @@ export interface Message {
   persona: PersonaType | 'user';
   timestamp: Date;
   isLoading?: boolean;
+  factChecked?: boolean;
 }
 
 export interface ConversationState {

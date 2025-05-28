@@ -11,10 +11,6 @@ import { ConversationControls } from '@/components/ConversationControls';
 import { Button } from '@/components/ui/Button';
 import { PERSONA_INFO, PersonaType } from '@/lib/perplexity';
 import { AutoConversationEngine, ConversationState } from '@/lib/autoConversation';
-import { ExampleProblems } from '@/components/ExampleProblems';
-import { DecisionSummary } from '@/components/DecisionSummary';
-import { QuickDemo } from '@/components/QuickDemo';
-import { DecisionProgress } from '@/components/DecisionProgress';
 
 export default function Home() {
   const { data: session, status } = useSession();
@@ -335,42 +331,14 @@ export default function Home() {
             <h1 className="text-5xl font-bold text-white mb-4 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
               Perspectra
             </h1>
-            <p className="text-xl text-slate-300 max-w-2xl mx-auto leading-relaxed mb-8">
-              Stop overthinking. Get <span className="text-blue-400 font-semibold">expert AI analysis</span> of your toughest decisions 
-              in minutes, not hours. Multiple perspectives, actionable insights, clear recommendations.
+            <p className="text-xl text-slate-300 max-w-2xl mx-auto leading-relaxed">
+              Your AI-powered boardroom with visual conversation flow. Watch AI personas discuss your decisions 
+              while you observe, interrupt, and guide the conversation.
             </p>
-            
-            {/* Value Props */}
-            <div className="flex justify-center gap-8 text-center mb-8">
-              <div className="bg-white/5 rounded-lg p-4 border border-white/10">
-                <div className="text-2xl font-bold text-blue-400">4</div>
-                <div className="text-sm text-slate-400">Expert AI Advisors</div>
-              </div>
-              <div className="bg-white/5 rounded-lg p-4 border border-white/10">
-                <div className="text-2xl font-bold text-purple-400">5-15</div>
-                <div className="text-sm text-slate-400">Minutes to Clarity</div>
-              </div>
-              <div className="bg-white/5 rounded-lg p-4 border border-white/10">
-                <div className="text-2xl font-bold text-green-400">100%</div>
-                <div className="text-sm text-slate-400">Actionable Results</div>
-              </div>
-            </div>
-
-            {/* Social Proof / Use Cases */}
-            <div className="text-center mb-12">
-              <p className="text-slate-400 text-sm mb-4">Perfect for:</p>
-              <div className="flex flex-wrap justify-center gap-3">
-                <span className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-sm">Career Changes</span>
-                <span className="px-3 py-1 bg-purple-500/20 text-purple-300 rounded-full text-sm">Business Decisions</span>
-                <span className="px-3 py-1 bg-green-500/20 text-green-300 rounded-full text-sm">Investment Choices</span>
-                <span className="px-3 py-1 bg-yellow-500/20 text-yellow-300 rounded-full text-sm">Life Changes</span>
-                <span className="px-3 py-1 bg-pink-500/20 text-pink-300 rounded-full text-sm">Major Purchases</span>
-              </div>
-            </div>
           </div>
 
           {/* Problem Input Card */}
-          <div className="max-w-2xl mx-auto mb-12">
+          <div className="max-w-2xl mx-auto">
             <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 border border-white/20 shadow-2xl">
               <h2 className="text-2xl font-semibold text-white mb-6 text-center">
                 What decision or problem would you like to explore?
@@ -380,7 +348,7 @@ export default function Home() {
                 <textarea
                   value={problem || ''}
                   onChange={(e) => setProblem(e.target.value)}
-                  placeholder="Describe your situation, decision, or challenge. Be specific about your constraints, goals, and what you're trying to decide between..."
+                  placeholder="Describe your situation, decision, or challenge. The AI personas will discuss it among themselves while you observe and guide the conversation..."
                   className="w-full h-32 px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-400 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
                 
@@ -393,39 +361,17 @@ export default function Home() {
                 </Button>
               </div>
             </div>
-          </div>
 
-          {/* Example Problems */}
-          <ExampleProblems onSelectExample={(exampleProblem) => {
-            setProblem(exampleProblem);
-          }} />
-
-          {/* Quick Demo */}
-          <div className="max-w-2xl mx-auto mt-12">
-            <QuickDemo onStartDemo={(demoMessages, demoProblem) => {
-              // Load demo conversation
-              clearConversation();
-              setProblem(demoProblem);
-              
-              // Add demo messages to store
-              demoMessages.forEach(message => {
-                addMessage(message);
-              });
-              
-              // Exit problem input mode
-              setShowProblemInput(false);
-            }} />
-          </div>
-
-          {/* Features Preview */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-16">
-            {Object.entries(PERSONA_INFO).map(([key, info]) => (
-              <div key={key} className="text-center p-4 bg-white/5 rounded-xl border border-white/10">
-                <div className="text-2xl mb-2">{info.icon}</div>
-                <div className="text-sm font-medium text-white">{info.name}</div>
-                <div className="text-xs text-slate-400 mt-1">{info.description}</div>
-              </div>
-            ))}
+            {/* Features Preview */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-12">
+              {Object.entries(PERSONA_INFO).map(([key, info]) => (
+                <div key={key} className="text-center p-4 bg-white/5 rounded-xl border border-white/10">
+                  <div className="text-2xl mb-2">{info.icon}</div>
+                  <div className="text-sm font-medium text-white">{info.name}</div>
+                  <div className="text-xs text-slate-400 mt-1">{info.description}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -495,11 +441,6 @@ export default function Home() {
 
           {/* Stats */}
           <div className="p-6 border-t border-white/10">
-            {/* Progress Indicator */}
-            <div className="mb-6">
-              <DecisionProgress messages={messages} problem={problem || ''} />
-            </div>
-
             <div className="grid grid-cols-2 gap-4 text-center">
               <div className="bg-white/5 rounded-lg p-3">
                 <div className="text-lg font-bold text-white">{messages.length}</div>
@@ -669,50 +610,14 @@ export default function Home() {
               </div>
             )}
 
-            {/* Canvas Section */}
+            {/* Canvas Section - Fixed position, no scrolling */}
             {(viewMode === 'split' || viewMode === 'canvas') && (
               <div className={`${viewMode === 'split' ? 'w-1/2' : 'w-full'} p-6 overflow-hidden`}>
-                <div className="h-full flex flex-col">
-                  {/* Canvas Header */}
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-white">Decision Analysis</h3>
-                    <div className="text-xs text-slate-400">
-                      {messages.length} insights analyzed
-                    </div>
-                  </div>
-                  
-                  {/* Canvas Content */}
-                  <div className="flex-1 overflow-hidden">
-                    {messages.length >= 3 ? (
-                      <div className="h-full overflow-y-auto space-y-6">
-                        {/* Conversation Canvas */}
-                        <div className="h-64">
-                          <ConversationCanvas
-                            messages={messages}
-                            isAutoConversing={conversationState.isActive && !conversationState.pauseRequested}
-                            onNodeClick={handleNodeClick}
-                          />
-                        </div>
-                        
-                        {/* Decision Summary */}
-                        <DecisionSummary
-                          messages={messages}
-                          problem={problem || ''}
-                          onExport={() => {
-                            // TODO: Implement export functionality
-                            console.log('Export summary');
-                          }}
-                        />
-                      </div>
-                    ) : (
-                      <ConversationCanvas
-                        messages={messages}
-                        isAutoConversing={conversationState.isActive && !conversationState.pauseRequested}
-                        onNodeClick={handleNodeClick}
-                      />
-                    )}
-                  </div>
-                </div>
+                <ConversationCanvas
+                  messages={messages}
+                  isAutoConversing={conversationState.isActive && !conversationState.pauseRequested}
+                  onNodeClick={handleNodeClick}
+                />
               </div>
             )}
           </div>

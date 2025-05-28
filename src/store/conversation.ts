@@ -28,6 +28,7 @@ export interface ConversationState {
   messages: Message[];
   isLoading: boolean;
   isConversationActive: boolean;
+  problem: string | null;
   
   // Conversation history
   conversations: Conversation[];
@@ -37,6 +38,8 @@ export interface ConversationState {
   addMessage: (message: Omit<Message, 'id' | 'timestamp'>) => void;
   updateMessage: (id: string, updates: Partial<Message>) => void;
   setIsLoading: (loading: boolean) => void;
+  setProblem: (problem: string | null) => void;
+  clearConversation: () => void;
   
   // Conversation management
   createConversation: (data: {
@@ -66,6 +69,16 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
   isConversationActive: false,
   conversations: [],
   isLoadingConversations: false,
+  problem: null,
+
+  // Actions
+  setProblem: (problem) => set({ problem }),
+  clearConversation: () => set({ 
+    currentConversation: null, 
+    messages: [], 
+    isConversationActive: false,
+    problem: null 
+  }),
 
   // Message management
   addMessage: (message) => {

@@ -1,10 +1,11 @@
 'use client';
 
-import { signIn, getSession } from 'next-auth/react';
-import { useState } from 'react';
+import { signIn, useSession } from 'next-auth/react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function SignIn() {
+  const { status } = useSession();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -12,6 +13,27 @@ export default function SignIn() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (status === 'authenticated') {
+      router.push('/');
+    }
+  }, [status, router]);
+
+  // Show loading while checking authentication
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <div className="text-white text-xl">Loading...</div>
+      </div>
+    );
+  }
+
+  // Don't render signin form if already authenticated
+  if (status === 'authenticated') {
+    return null;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,7 +52,7 @@ export default function SignIn() {
       } else {
         setError('Invalid email or password');
       }
-    } catch (error) {
+    } catch {
       setError('An error occurred. Please try again.');
     } finally {
       setIsLoading(false);
@@ -49,8 +71,8 @@ export default function SignIn() {
       if (result?.ok) {
         router.push('/');
       }
-    } catch (error) {
-      console.error('Sign in error:', error);
+    } catch (err) {
+      console.error('Sign in error:', err);
     } finally {
       setIsLoading(false);
     }
@@ -149,7 +171,7 @@ export default function SignIn() {
 
           <div className="text-center text-sm text-slate-400">
             <p>
-              Don't have an account?{' '}
+              Don&apos;t have an account?{' '}
               <button
                 onClick={() => router.push('/auth/signup')}
                 className="text-blue-400 hover:text-blue-300 transition-colors"

@@ -33,7 +33,17 @@ export async function POST(request: NextRequest) {
     const { messages, persona, problem, isAutoConversation, conversationContext } = await request.json();
 
     const apiKey = process.env.PERPLEXITY_API_KEY;
+    
+    // Debug API key loading
+    console.log('API Key Debug:', {
+      exists: !!apiKey,
+      length: apiKey?.length,
+      prefix: apiKey?.substring(0, 15) + '...',
+      envKeys: Object.keys(process.env).filter(key => key.includes('PERPLEXITY'))
+    });
+    
     if (!apiKey) {
+      console.error('PERPLEXITY_API_KEY environment variable not found');
       return NextResponse.json(
         { error: 'Perplexity API key not configured' },
         { status: 500 }

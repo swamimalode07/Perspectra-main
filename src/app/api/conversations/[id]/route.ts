@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
+import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
@@ -12,14 +12,14 @@ export async function GET(
     const { id } = await params;
     const session = await getServerSession(authOptions);
     
-    if (!session?.user?.id) {
+    if (!(session as any)?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const conversation = await prisma.conversation.findFirst({
       where: {
         id: id,
-        userId: session.user.id,
+        userId: (session as any).user.id,
       },
       include: {
         messages: {
@@ -57,7 +57,7 @@ export async function PATCH(
     const { id } = await params;
     const session = await getServerSession(authOptions);
     
-    if (!session?.user?.id) {
+    if (!(session as any)?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -65,7 +65,7 @@ export async function PATCH(
     const existingConversation = await prisma.conversation.findFirst({
       where: {
         id: id,
-        userId: session.user.id,
+        userId: (session as any).user.id,
       },
     });
 
@@ -106,7 +106,7 @@ export async function PUT(
     const { id } = await params;
     const session = await getServerSession(authOptions);
     
-    if (!session?.user?.id) {
+    if (!(session as any)?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -114,7 +114,7 @@ export async function PUT(
     const existingConversation = await prisma.conversation.findFirst({
       where: {
         id: id,
-        userId: session.user.id,
+        userId: (session as any).user.id,
       },
     });
 
@@ -154,7 +154,7 @@ export async function DELETE(
     const { id } = await params;
     const session = await getServerSession(authOptions);
     
-    if (!session?.user?.id) {
+    if (!(session as any)?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -162,7 +162,7 @@ export async function DELETE(
     const existingConversation = await prisma.conversation.findFirst({
       where: {
         id: id,
-        userId: session.user.id,
+        userId: (session as any).user.id,
       },
     });
 

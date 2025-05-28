@@ -2,23 +2,21 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useConversationStore } from '@/store/conversation';
-import { PersonaType } from '@/lib/perplexity';
+import { PersonaType, PERSONA_INFO } from '@/lib/perplexity';
 import { MessageBubble } from './MessageBubble';
 import { PersonaCard } from './PersonaCard';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export function ConversationInterface() {
   const {
     messages,
-    activePersonas,
-    currentProblem,
+    currentConversation,
+    problem,
     isConversationActive,
     addMessage,
     updateMessage,
-    setActivePersonas,
-    setCurrentProblem,
-    startConversation,
+    createConversation,
     endConversation,
     clearConversation,
   } = useConversationStore();
@@ -26,6 +24,7 @@ export function ConversationInterface() {
   const [inputMessage, setInputMessage] = useState('');
   const [problemInput, setProblemInput] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [activePersonas, setActivePersonas] = useState<PersonaType[]>(['system1', 'system2', 'moderator', 'devilsAdvocate']);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -36,20 +35,21 @@ export function ConversationInterface() {
     scrollToBottom();
   }, [messages]);
 
-  const handleStartConversation = () => {
+  const handleStartConversation = async () => {
     if (!problemInput.trim()) return;
     
-    setCurrentProblem(problemInput);
-    startConversation();
-    
-    // Add initial user message
-    addMessage({
-      content: `I need help with this decision: ${problemInput}`,
-      persona: 'user',
-    });
+    try {
+      await createConversation({
+        title: problemInput.slice(0, 50) + (problemInput.length > 50 ? '...' : ''),
+        problem: problemInput,
+        activePersonas,
+      });
 
-    // Trigger initial responses from active personas
-    generatePersonaResponses();
+      // Trigger initial responses from active personas
+      generatePersonaResponses();
+    } catch (error) {
+      console.error('Error starting conversation:', error);
+    }
   };
 
   const handleSendMessage = () => {
@@ -69,7 +69,7 @@ export function ConversationInterface() {
 
     // Generate responses from each active persona
     for (const persona of activePersonas) {
-      // Add loading message and store its ID
+      // Add loading message
       const loadingMessage = {
         content: '',
         persona,
@@ -91,7 +91,7 @@ export function ConversationInterface() {
           body: JSON.stringify({
             messages: messages,
             persona,
-            problem: currentProblem,
+            problem: problem || problemInput,
           }),
         });
 
@@ -235,7 +235,7 @@ export function ConversationInterface() {
           <Card className="h-[600px] flex flex-col">
             <CardHeader>
               <CardTitle className="text-lg">
-                Discussion: {currentProblem}
+                Discussion: {problem || currentConversation?.title}
               </CardTitle>
             </CardHeader>
             

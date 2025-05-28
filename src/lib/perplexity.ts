@@ -24,28 +24,52 @@ export class PerplexityClient {
       // Use sonar models for internet search, regular models for internal reasoning
       const searchModel = useSearch ? 'sonar-pro' : model;
       
+      // Debug logging
+      console.log('Perplexity API Debug Info:', {
+        model: searchModel,
+        apiKeyExists: !!this.apiKey,
+        apiKeyLength: this.apiKey?.length,
+        apiKeyPrefix: this.apiKey?.substring(0, 10) + '...',
+        baseUrl: this.baseUrl,
+        messageCount: messages.length
+      });
+      
+      const requestBody = {
+        model: searchModel,
+        messages,
+        temperature: 0.7,
+        max_tokens: 800, // Reduced for more concise responses
+        // Enable search for fact-checking when using sonar models
+        ...(useSearch && { 
+          search_domain_filter: ["perplexity.ai"],
+          search_recency_filter: "month"
+        })
+      };
+      
+      console.log('Request body:', JSON.stringify(requestBody, null, 2));
+      
       const response = await fetch(this.baseUrl, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${this.apiKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          model: searchModel,
-          messages,
-          temperature: 0.7,
-          max_tokens: 800, // Reduced for more concise responses
-          // Enable search for fact-checking when using sonar models
-          ...(useSearch && { 
-            search_domain_filter: ["perplexity.ai"],
-            search_recency_filter: "month"
-          })
-        }),
+        body: JSON.stringify(requestBody),
       });
+
+      console.log('Response status:', response.status);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
 
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Perplexity API error response:', errorText);
+        
+        // Check if it's an HTML error page (401 Authorization Required)
+        if (errorText.includes('<html>') || errorText.includes('401 Authorization Required')) {
+          console.error('Received HTML error page instead of JSON - likely authentication issue');
+          console.error('Check if API key is valid and properly formatted');
+        }
+        
         throw new Error(`Perplexity API error: ${response.status} - ${errorText}`);
       }
 

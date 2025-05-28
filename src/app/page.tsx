@@ -105,7 +105,7 @@ export default function Home() {
 
   // Create new conversation in database
   const createConversation = async (title: string, problemText: string) => {
-    if (!session?.user?.id) return null;
+    if (!(session as any)?.user?.id) return null;
     
     setIsSaving(true);
     try {
@@ -293,6 +293,11 @@ export default function Home() {
     );
   }
 
+  // Redirect if not authenticated
+  if (status === 'unauthenticated') {
+    return null; // Prevent flash of content before redirect
+  }
+
   if (showProblemInput) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
@@ -429,7 +434,6 @@ export default function Home() {
               {Object.entries(PERSONA_INFO).map(([key, info]) => (
                 <PersonaCard
                   key={key}
-                  persona={key as PersonaType}
                   info={info}
                   isActive={selectedPersona === key}
                   isLoading={isLoading && selectedPersona === key}

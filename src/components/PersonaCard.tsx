@@ -8,14 +8,13 @@ interface PersonaInfo {
 }
 
 interface PersonaCardProps {
-  persona: PersonaType;
   info: PersonaInfo;
   isActive?: boolean;
   isLoading?: boolean;
   onClick: () => void;
 }
 
-export function PersonaCard({ persona, info, isActive, isLoading, onClick }: PersonaCardProps) {
+export function PersonaCard({ info, isActive, isLoading, onClick }: PersonaCardProps) {
   const getColorClasses = (color: string) => {
     switch (color) {
       case 'bg-red-500':

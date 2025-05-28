@@ -1,20 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
+import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
 // GET /api/conversations - Get user's conversations
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const session = await getServerSession(authOptions);
     
-    if (!session?.user?.id) {
+    if (!(session as any)?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const conversations = await prisma.conversation.findMany({
       where: {
-        userId: session.user.id,
+        userId: (session as any).user.id,
       },
       include: {
         messages: {
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     
-    if (!session?.user?.id) {
+    if (!(session as any)?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
       data: {
         title,
         problem,
-        userId: session.user.id,
+        userId: (session as any).user.id,
         activePersonas: JSON.stringify(activePersonas || ['system1', 'system2', 'moderator', 'devilsAdvocate']),
       },
       include: {

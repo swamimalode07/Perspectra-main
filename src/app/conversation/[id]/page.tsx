@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useParams } from 'next/navigation';
 import { useConversationStore } from '@/store/conversation';
@@ -30,7 +30,7 @@ interface DatabaseConversation {
 }
 
 export default function ConversationPage() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
   const params = useParams();
   const conversationId = params.id as string;
@@ -66,14 +66,31 @@ export default function ConversationPage() {
     }
   }, [status, router]);
 
-  // Load conversation from database
-  useEffect(() => {
-    if (status === 'authenticated' && conversationId) {
-      loadConversation();
+  // Save message to database - memoized to prevent infinite loops
+  const saveMessageToDatabase = useCallback(async (message: {
+    id: string;
+    content: string;
+    persona: string;
+    timestamp: Date;
+    factChecked?: boolean;
+  }) => {
+    try {
+      await fetch(`/api/conversations/${conversationId}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: message.content,
+          persona: message.persona,
+          factChecked: message.factChecked || false,
+        }),
+      });
+    } catch (error) {
+      console.error('Error saving message:', error);
     }
-  }, [status, conversationId]);
+  }, [conversationId]);
 
-  const loadConversation = async () => {
+  // Load conversation - memoized to prevent infinite loops
+  const loadConversation = useCallback(async () => {
     try {
       setIsLoadingConversation(true);
       
@@ -99,10 +116,8 @@ export default function ConversationPage() {
         // Convert database messages to store format
         messagesData.messages.forEach((dbMessage: DatabaseMessage) => {
           addMessage({
-            id: dbMessage.id,
             content: dbMessage.content,
             persona: dbMessage.persona as PersonaType | 'user',
-            timestamp: new Date(dbMessage.timestamp),
             factChecked: dbMessage.factChecked,
           });
         });
@@ -113,7 +128,14 @@ export default function ConversationPage() {
     } finally {
       setIsLoadingConversation(false);
     }
-  };
+  }, [conversationId, clearConversation, setProblem, addMessage]);
+
+  // Load conversation from database
+  useEffect(() => {
+    if (status === 'authenticated' && conversationId) {
+      loadConversation();
+    }
+  }, [status, conversationId, loadConversation]);
 
   // Initialize auto-conversation engine
   useEffect(() => {
@@ -135,7 +157,7 @@ export default function ConversationPage() {
     autoConversationEngine.setStateChangeCallback((state) => {
       setConversationState(state);
     });
-  }, [autoConversationEngine, addMessage]);
+  }, [autoConversationEngine, addMessage, saveMessageToDatabase]);
 
   // Auto-scroll to bottom of chat container
   useEffect(() => {
@@ -148,23 +170,6 @@ export default function ConversationPage() {
       }
     }
   }, [messages, viewMode]);
-
-  // Save message to database
-  const saveMessageToDatabase = async (message: any) => {
-    try {
-      await fetch(`/api/conversations/${conversationId}/messages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          content: message.content,
-          persona: message.persona,
-          factChecked: message.factChecked || false,
-        }),
-      });
-    } catch (error) {
-      console.error('Error saving message:', error);
-    }
-  };
 
   const handleSendMessage = async () => {
     if (!userInput.trim()) return;
@@ -302,7 +307,7 @@ export default function ConversationPage() {
         <div className="text-center">
           <div className="text-6xl mb-4">😕</div>
           <h1 className="text-2xl font-bold text-white mb-4">Conversation Not Found</h1>
-          <p className="text-slate-300 mb-6">This conversation doesn't exist or you don't have access to it.</p>
+          <p className="text-slate-300 mb-6">This conversation doesn&apos;t exist or you don&apos;t have access to it.</p>
           <Button onClick={goToDashboard} className="bg-gradient-to-r from-blue-500 to-purple-600">
             Back to Dashboard
           </Button>
@@ -356,7 +361,6 @@ export default function ConversationPage() {
               {Object.entries(PERSONA_INFO).map(([key, info]) => (
                 <PersonaCard
                   key={key}
-                  persona={key as PersonaType}
                   info={info}
                   isActive={selectedPersona === key}
                   isLoading={isLoading && selectedPersona === key}
